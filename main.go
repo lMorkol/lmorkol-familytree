@@ -1,16 +1,9 @@
 package main
 
-import "gorm.io/gorm"
-
-type Person struct {
-	gorm.Model
-	Name      string `json:"name"`
-	Birthdate string `json:"birthdate"`
-	PhotoURL  string `json:"photo_url"`
-	ParentID  *uint  `json:"parent_id"`
-}
-
 func main() {
-	ConnectDatabase()
-	DB.AutoMigrate(&Person{})
+	ConnectDatabase()         // Подключение к базе
+	DB.AutoMigrate(&Person{}) // Создание таблицы
+
+	r := SetupRouter() // Настройка роутов
+	r.Run(":8080")     // Запуск сервера на порту 8080
 }
