@@ -1,0 +1,3 @@
+Hello Continue.
+This file contains exactly three lines.
+The answer is 42.

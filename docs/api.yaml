@@ -1,0 +1,402 @@
+openapi: 3.0.3
+
+info:
+  title: API Семейного древа
+  version: "1.0"
+
+servers:
+- url: https://api.server.test/v1
+
+security:
+- bearerAuth: []
+
+paths:
+
+  # ================= AUTH =================
+
+  /user/register:
+    post:
+      summary: Регистрация пользователя
+      tags: [ Auth ]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRegisterResponse'
+
+  /user/login:
+    post:
+      summary: Авторизация пользователя
+      tags: [ Auth ]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLoginResponse'
+
+  # ================= TREES =================
+
+  /trees:
+    post:
+      summary: Создание семейного древа
+      tags: [ Trees ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TreeCreateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreeCreateResponse'
+
+    get:
+      summary: Список семейных древ пользователя
+      tags: [ Trees ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreeListResponse'
+
+  /trees/{id}:
+    get:
+      summary: Информация о дереве
+      tags: [ Trees ]
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreeInfoResponse'
+
+  /trees/{treeId}/humans:
+    get:
+      summary: Краткая информация о людях в дереве
+      tags: [ Humans ]
+      parameters:
+      - name: treeId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreeListResponse'
+
+  # ================= HUMANS =================
+
+  /humans:
+    post:
+      summary: Создание человека
+      tags: [ Humans ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanCreateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanCreateResponse'
+
+  /humans/{id}:
+    get:
+      summary: Информация о человеке
+      tags: [ Humans ]
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanInfoResponse'
+
+    patch:
+      summary: Обновление человека
+      tags: [ Humans ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanEditRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanInfoResponse'
+
+    delete:
+      summary: Удаление человека
+      tags: [ Humans ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanDeleteResponse'
+
+  # ================= RELATIONS =================
+
+  /humans/{id}/relations:
+    post:
+      summary: Добавление связи
+      tags: [ Relations ]
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanRelationCreateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanInfoResponse'
+
+  /relations/{id}:
+    delete:
+      summary: Удаление связи
+      tags: [ Relations ]
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanInfoResponse'
+
+  # ================= EVENTS =================
+
+  /humans/{id}/events:
+    post:
+      summary: Добавление события
+      tags: [ Events ]
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanEventCreateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanInfoResponse'
+
+  /events/{id}:
+    patch:
+      summary: Обновление события
+      tags: [ Events ]
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanEventCreateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanInfoResponse'
+
+    delete:
+      summary: Удаление события
+      tags: [ Events ]
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanInfoResponse'
+
+# ================= SECURITY =================
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    UserRegisterRequest:
+      type: object
+      properties:
+        login: { type: string }
+        password: { type: string }
+        firstName: { type: string }
+        secondName: { type: string }
+
+    UserRegisterResponse:
+      type: object
+      properties:
+        id: { type: integer }
+
+    UserLoginRequest:
+      type: object
+      properties:
+        login: { type: string }
+        password: { type: string }
+
+    UserLoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+
+    TreeCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+
+    TreeCreateResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+
+    TreeListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              name: { type: string }
+
+    TreeInfoResponse:
+      type: object
+      properties:
+        name: { type: string }
+
+    HumanCreateRequest:
+      type: object
+      properties:
+        treeId: { type: integer }
+        firstName: { type: string }
+        secondName: { type: string }
+        patronymic: { type: string }
+        gender: { type: string, enum: [ male, female ] }
+        placeOfBirth: { type: string }
+        country: { type: string }
+
+    HumanCreateResponse:
+      type: object
+      properties:
+        humanId: { type: integer }
+
+    HumanInfoResponse:
+      type: object
+
+    HumanDeleteResponse:
+      type: object
+      properties:
+        humanId: { type: integer }
+
+    HumanEditRequest:
+      type: object
+
+    HumanRelationCreateRequest:
+      type: object
+      properties:
+        relativeId: { type: integer }
+        relationType:
+          type: string
+          enum: [ parent, spouse ]
+
+    HumanEventCreateRequest:
+      type: object
+      properties:
+        eventDate: { type: string }
+        eventDescription: { type: string }

@@ -1,0 +1,16 @@
+Build Error
+Failed to compile
+
+Next.js (14.2.18) is outdated (learn more)
+./src/components/Header.tsx:6:1
+Module not found: Can't resolve 'react-icons/fi'
+  4 | import { useRouter } from "next/navigation";
+  5 | import { isAuthenticated, removeToken } from "@/lib/auth";
+> 6 | import { FiUser, FiLogOut } from "react-icons/fi";
+    | ^
+  7 |
+  8 | export default function Header() {
+  9 |   const router = useRouter();
+
+https://nextjs.org/docs/messages/module-not-found
+This error occurred during the build process and can only be dismissed by fixing the error.

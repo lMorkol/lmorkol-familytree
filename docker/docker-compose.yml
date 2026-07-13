@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: familytree
+      POSTGRES_PASSWORD: familytree
+      POSTGRES_DB: familytree
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../docs/ddl.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ../backend/seed_data.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U familytree"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://familytree:familytree@postgres:5432/familytree
+      JWT_SECRET: super-secret-key-change-in-production
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRATION_HOURS: 24
+      CORS_ORIGINS: http://localhost:3000,http://192.168.0.113:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://192.168.0.113:8000
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
