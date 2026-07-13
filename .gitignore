@@ -36,3 +36,13 @@ frontend/build/
 # Misc
 *.log
 .mimocode/
+*.md
+
+# User-specific files
+Карточка человека.txt
+Ошибка.txt
+Работы.txt
+Фронт.jpg
+пример.jpg
+frontError.txt
+1783939487260-stellar-otter.md
