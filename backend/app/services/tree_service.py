@@ -220,6 +220,12 @@ class TreeService:
 
         return self.tree_repo.remove_user(tree_id, target_user_id)
 
+    def get_filter_values(self, tree_id: int, user: User) -> dict:
+        require_tree_access(tree_id, user, self.db)
+        cities = self.human_repo.get_distinct_cities(tree_id)
+        countries = self.human_repo.get_distinct_countries(tree_id)
+        return {"cities": cities, "countries": countries}
+
     def leave_tree(self, tree_id: int, user: User) -> bool:
         require_tree_access(tree_id, user, self.db)
 

@@ -79,6 +79,13 @@ def delete_tree(tree_id: int, user: User = Depends(get_current_user), db: Sessio
     return DataResponse(data={"success": True})
 
 
+@router.get("/{tree_id}/filter-values", response_model=DataResponse[dict])
+def get_tree_filter_values(tree_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    service = TreeService(db)
+    result = service.get_filter_values(tree_id, user)
+    return DataResponse(data=result)
+
+
 @router.get("/{tree_id}/users", response_model=DataResponse[TreeMembersResponse])
 def list_tree_users(tree_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     service = TreeService(db)

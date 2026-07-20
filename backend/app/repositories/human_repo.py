@@ -35,9 +35,15 @@ class HumanRepository:
         if gender:
             q = q.filter(Human.gender == gender)
         if place_of_birth:
-            q = q.filter(Human.place_of_birth.ilike(f"%{place_of_birth}%"))
+            cities = [c.strip() for c in place_of_birth.split(",") if c.strip()]
+            if cities:
+                from sqlalchemy import or_
+                q = q.filter(or_(*[Human.place_of_birth.ilike(f"%{c}%") for c in cities]))
         if country:
-            q = q.filter(Human.country.ilike(f"%{country}%"))
+            countries = [c.strip() for c in country.split(",") if c.strip()]
+            if countries:
+                from sqlalchemy import or_
+                q = q.filter(or_(*[Human.country.ilike(f"%{c}%") for c in countries]))
         q = q.order_by(Human.birth_date.desc().nullslast())
         if offset:
             q = q.offset(offset)
@@ -64,9 +70,15 @@ class HumanRepository:
         if gender:
             q = q.filter(Human.gender == gender)
         if place_of_birth:
-            q = q.filter(Human.place_of_birth.ilike(f"%{place_of_birth}%"))
+            cities = [c.strip() for c in place_of_birth.split(",") if c.strip()]
+            if cities:
+                from sqlalchemy import or_
+                q = q.filter(or_(*[Human.place_of_birth.ilike(f"%{c}%") for c in cities]))
         if country:
-            q = q.filter(Human.country.ilike(f"%{country}%"))
+            countries = [c.strip() for c in country.split(",") if c.strip()]
+            if countries:
+                from sqlalchemy import or_
+                q = q.filter(or_(*[Human.country.ilike(f"%{c}%") for c in countries]))
         return q.count()
 
     def create(self, tree_id: int, first_name: str | None, second_name: str | None,
@@ -100,3 +112,21 @@ class HumanRepository:
         human.is_deleted = True
         self.db.commit()
         return human
+
+    def get_distinct_cities(self, tree_id: int) -> list[str]:
+        from sqlalchemy import distinct
+        rows = (
+            self.db.query(distinct(Human.place_of_birth))
+            .filter(Human.tree_id == tree_id, Human.is_deleted == False, Human.place_of_birth.isnot(None), Human.place_of_birth != "")
+            .all()
+        )
+        return sorted([r[0] for r in rows])
+
+    def get_distinct_countries(self, tree_id: int) -> list[str]:
+        from sqlalchemy import distinct
+        rows = (
+            self.db.query(distinct(Human.country))
+            .filter(Human.tree_id == tree_id, Human.is_deleted == False, Human.country.isnot(None), Human.country != "")
+            .all()
+        )
+        return sorted([r[0] for r in rows])

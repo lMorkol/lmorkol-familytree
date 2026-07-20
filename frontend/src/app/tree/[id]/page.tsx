@@ -6,7 +6,8 @@ import api, { getApiBaseUrl } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
 import HumanPreview from "@/components/HumanPreview";
 import Modal from "@/components/ui/Modal";
-import { FiArrowLeft, FiPlus, FiChevronRight, FiFilter, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiPlus, FiChevronRight, FiChevronDown, FiFilter, FiX } from "react-icons/fi";
+import AutocompleteInput from "@/components/ui/AutocompleteInput";
 import type { HumanBrief, TreeInfoResponse } from "@/types";
 
 export default function TreePage() {
@@ -27,12 +28,14 @@ export default function TreePage() {
   const [firstName, setFirstName] = useState("");
   const [secondName, setSecondName] = useState("");
   const [filterGender, setFilterGender] = useState("");
-  const [filterBirthplace, setFilterBirthplace] = useState("");
-  const [filterCountry, setFilterCountry] = useState("");
+  const [filterBirthplace, setFilterBirthplace] = useState<string[]>([]);
+  const [filterCountry, setFilterCountry] = useState<string[]>([]);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [showMyHuman, setShowMyHuman] = useState(false);
+  const [filterCities, setFilterCities] = useState<string[]>([]);
+  const [filterCountries, setFilterCountries] = useState<string[]>([]);
 
   const fetchTree = useCallback(async () => {
     try {
@@ -40,21 +43,24 @@ export default function TreePage() {
       if (firstName) params.first_name = firstName;
       if (secondName) params.second_name = secondName;
       if (filterGender) params.gender = filterGender;
-      if (filterBirthplace) params.place_of_birth = filterBirthplace;
-      if (filterCountry) params.country = filterCountry;
+      if (filterBirthplace.length > 0) params.place_of_birth = filterBirthplace.join(",");
+      if (filterCountry.length > 0) params.country = filterCountry.join(",");
       params.limit = String(pageSize);
       params.offset = String((currentPage - 1) * pageSize);
 
       const qs = new URLSearchParams(params).toString();
-      const [treeRes, humansRes, userRes] = await Promise.all([
+      const [treeRes, humansRes, userRes, filterRes] = await Promise.all([
         api.get(`/v1/trees/${treeId}`),
         api.get(`/v1/trees/${treeId}/humans${qs ? "?" + qs : ""}`),
         api.get("/v1/user/me"),
+        api.get(`/v1/trees/${treeId}/filter-values`),
       ]);
       setTree(treeRes.data.data);
       setTreeName(treeRes.data.data.name);
       setHumans(humansRes.data.data.items);
       setTotalCount(humansRes.data.data.total);
+      setFilterCities(filterRes.data.data.cities || []);
+      setFilterCountries(filterRes.data.data.countries || []);
       const userTrees = userRes.data.data.trees || [];
       const currentTree = userTrees.find((t: any) => t.id === treeId);
       const newMyHumanId = currentTree?.humanId ?? null;
@@ -119,14 +125,14 @@ export default function TreePage() {
     setFirstName("");
     setSecondName("");
     setFilterGender("");
-    setFilterBirthplace("");
-    setFilterCountry("");
+    setFilterBirthplace([]);
+    setFilterCountry([]);
     setCurrentPage(1);
   };
 
   if (loading) return <div className="py-10 text-center text-gray-500">Загрузка...</div>;
 
-  const FilterPanel = () => (
+  const filterPanel = (
     <div className="space-y-4">
       <div>
         <label className="block text-xs text-gray-500 mb-2">Имя</label>
@@ -150,34 +156,36 @@ export default function TreePage() {
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-2">Пол</label>
-        <select
-          value={filterGender}
-          onChange={(e) => setFilterGender(e.target.value)}
-          className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-700 focus:outline-none focus:border-caramel focus:ring-1 focus:ring-caramel transition-colors"
-        >
-          <option value="">Все</option>
-          <option value="male">Мужской</option>
-          <option value="female">Женский</option>
-        </select>
+        <div className="relative">
+          <select
+            value={filterGender}
+            onChange={(e) => setFilterGender(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-4 py-2 pr-8 text-sm !text-gray-700 appearance-none focus:outline-none focus:border-caramel focus:ring-1 focus:ring-caramel transition-colors"
+            style={{ backgroundColor: "#ffffff" }}
+          >
+            <option value="">Все</option>
+            <option value="male">Мужской</option>
+            <option value="female">Женский</option>
+          </select>
+          <FiChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        </div>
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-2">Место рождения</label>
-        <input
-          type="text"
-          placeholder="Город..."
+        <label className="block text-xs text-gray-500 mb-2">Город рождения</label>
+        <AutocompleteInput
           value={filterBirthplace}
-          onChange={(e) => setFilterBirthplace(e.target.value)}
-          className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-caramel focus:ring-1 focus:ring-caramel transition-colors"
+          onChange={setFilterBirthplace}
+          suggestions={filterCities}
+          placeholder="Город..."
         />
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-2">Страна</label>
-        <input
-          type="text"
-          placeholder="Страна..."
+        <label className="block text-xs text-gray-500 mb-2">Страна рождения</label>
+        <AutocompleteInput
           value={filterCountry}
-          onChange={(e) => setFilterCountry(e.target.value)}
-          className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-caramel focus:ring-1 focus:ring-caramel transition-colors"
+          onChange={setFilterCountry}
+          suggestions={filterCountries}
+          placeholder="Страна..."
         />
       </div>
       <button
@@ -285,7 +293,7 @@ export default function TreePage() {
 
       {/* Mobile filter modal */}
       <Modal isOpen={showFilters} onClose={() => setShowFilters(false)} title="Фильтры">
-        <FilterPanel />
+        {filterPanel}
         <button
           onClick={() => setShowFilters(false)}
           className="w-full mt-4 bg-caramel text-white py-3 rounded-lg hover:bg-caramel/90 transition-colors font-medium"
@@ -302,7 +310,7 @@ export default function TreePage() {
               <FiFilter className="w-4 h-4 text-caramel" />
               Фильтры
             </h3>
-            <FilterPanel />
+            {filterPanel}
           </div>
         </aside>
 
