@@ -12,10 +12,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://familytree:familytree@postgres:5432/familytree
-      JWT_SECRET: super-secret-key-change-in-production
-      JWT_ALGORITHM: HS256
-      JWT_EXPIRATION_HOURS: 24
+      DATABASE_URL: postgresql://${POSTGRES_USER:-familytree}:${POSTGRES_PASSWORD:-familytree}@postgres:5432/${POSTGRES_DB:-familytree}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRATION_HOURS: ${JWT_EXPIRATION_HOURS:-24}
     depends_on:
       postgres:
         condition: service_healthy
@@ -29,7 +29,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://192.168.0.113:8000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     depends_on:
       - backend
     volumes:

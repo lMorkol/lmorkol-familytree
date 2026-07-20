@@ -3,16 +3,17 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: familytree
-      POSTGRES_PASSWORD: familytree
-      POSTGRES_DB: familytree
+      POSTGRES_USER: ${POSTGRES_USER:-familytree}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-familytree}
+      POSTGRES_DB: ${POSTGRES_DB:-familytree}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ../docs/ddl.sql:/docker-entrypoint-initdb.d/01-init.sql
       - ../backend/seed_data.sql:/docker-entrypoint-initdb.d/02-seed.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U familytree"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-familytree}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,28 +22,43 @@ services:
     build:
       context: ../backend
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://familytree:familytree@postgres:5432/familytree
-      JWT_SECRET: super-secret-key-change-in-production
-      JWT_ALGORITHM: HS256
-      JWT_EXPIRATION_HOURS: 24
-      CORS_ORIGINS: http://localhost:3000,http://192.168.0.113:3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-familytree}:${POSTGRES_PASSWORD:-familytree}@postgres:5432/${POSTGRES_DB:-familytree}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRATION_HOURS: ${JWT_EXPIRATION_HOURS:-24}
+      CORS_ORIGINS: ${CORS_ORIGINS}
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build:
       context: ../frontend
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://192.168.0.113:8000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   pgdata:
