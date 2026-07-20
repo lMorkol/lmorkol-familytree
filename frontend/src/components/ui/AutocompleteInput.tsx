@@ -40,7 +40,7 @@ export default function AutocompleteInput({
     return () => document.removeEventListener("pointerdown", handlePointerDown, true);
   }, []);
 
-  const toggleItem = (e: React.MouseEvent, item: string) => {
+  const toggleItem = (e: React.SyntheticEvent, item: string) => {
     e.stopPropagation();
     if (value.includes(item)) {
       onChange(value.filter((v) => v !== item));
