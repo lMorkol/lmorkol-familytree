@@ -18,6 +18,7 @@ class AuthService:
 
     def register(self, login: str, password: str, first_name: str, second_name: str,
                   gender: str = "male", email: str | None = None, phone: str | None = None) -> dict:
+        login = login.lower().strip()
         existing = self.user_repo.get_by_login(login)
         if existing:
             raise HTTPException(
@@ -60,6 +61,7 @@ class AuthService:
         return {"id": user.user_id, "token": token}
 
     def login(self, login: str, password: str) -> str:
+        login = login.lower().strip()
         user = self.user_repo.get_by_login(login)
         if user is None or not verify_password(password, user.password):
             raise HTTPException(

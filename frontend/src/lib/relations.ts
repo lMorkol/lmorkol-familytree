@@ -41,8 +41,11 @@ export function getRelationLabel(type: string, myGender: string, relatedGender: 
     if (relatedGender === "male") return "Внук";
     return "Внук(внучка)";
   }
-  if (type === "brother") return "Брат";
-  if (type === "sister") return "Сестра";
+  if (type === "brother" || type === "sister" || type === "sibling") {
+    if (relatedGender === "female") return "Сестра";
+    if (relatedGender === "male") return "Брат";
+    return "Брат/Сестра";
+  }
   if (type === "stepbrother") return "Сводный брат";
   if (type === "stepsister") return "Сводная сестра";
   if (type === "adopted") {

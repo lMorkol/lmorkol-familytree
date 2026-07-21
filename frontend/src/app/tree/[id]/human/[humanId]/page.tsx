@@ -121,6 +121,7 @@ export default function HumanPage() {
   const handleEditRelation = async (data: any) => {
     if (!editingRelation) return;
     await api.patch(`/v1/relations/${editingRelation.id}`, {
+      relationType: data.relationType,
       startDate: data.startDate || null,
       endDate: data.endDate || null,
     });
@@ -360,7 +361,8 @@ export default function HumanPage() {
               <img
                 src={`${API_URL}/uploads/${human.photo}`}
                 alt={[human.secondName, human.firstName].filter(Boolean).join(" ")}
-                className="w-36 h-36 rounded-lg object-cover"
+                className="w-36 h-36 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setLightboxPhoto(human.photo)}
               />
             ) : (
               <div className="w-36 h-36 rounded-lg bg-gray-100 flex items-center justify-center text-4xl text-gray-500">
@@ -451,10 +453,10 @@ export default function HumanPage() {
                 </button>
               </div>
               {showRelationForm && !editingRelation && (
-                <RelationForm onSubmit={handleAddRelation} onCancel={() => setShowRelationForm(false)} />
+                <RelationForm treeId={treeId} onSubmit={handleAddRelation} onCancel={() => setShowRelationForm(false)} />
               )}
               {editingRelation && (
-                <RelationForm initial={editingRelation} onSubmit={handleEditRelation} onCancel={() => { setEditingRelation(null); setShowRelationForm(false); }} />
+                <RelationForm treeId={treeId} initial={editingRelation} onSubmit={handleEditRelation} onCancel={() => { setEditingRelation(null); setShowRelationForm(false); }} />
               )}
 
               {relations.length === 0 ? (
@@ -529,12 +531,21 @@ export default function HumanPage() {
                                 {r.relatedName || `человек #${r.toHumanId}`}
                               </button>
                             </span>
-                            <button
-                              onClick={() => handleDeleteRelation(r.id)}
-                              className="text-gray-500 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100 transition-colors"
-                            >
-                              <FiTrash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => { setEditingRelation(r); setShowRelationForm(true); }}
+                                className="text-gray-500 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                                title="Редактировать"
+                              >
+                                <FiEdit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRelation(r.id)}
+                                className="text-gray-500 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>

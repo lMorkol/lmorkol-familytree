@@ -7,3 +7,7 @@ body {
   background-color: #F9FAFB;
   color: #374151;
 }
+
+.touch-none {
+  touch-action: none;
+}

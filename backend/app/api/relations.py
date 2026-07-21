@@ -12,6 +12,7 @@ router = APIRouter(tags=["Relations"])
 
 
 class HumanRelationUpdateRequest(BaseModel):
+    relationType: str | None = None
     startDate: str | None = None
     endDate: str | None = None
 
@@ -68,6 +69,7 @@ def update_relation(
     result = service.update_relation(
         relation_id=relation_id,
         user=user,
+        relation_type=request.relationType,
         start_date=request.startDate,
         end_date=request.endDate,
     )

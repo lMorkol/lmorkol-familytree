@@ -40,28 +40,27 @@ export default function Header() {
 
   return (
     <header className="bg-white border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-wrap justify-between items-center gap-2">
+        <div className="flex items-center gap-3 sm:gap-6 min-w-0">
           <h1
-            className="text-xl font-bold text-gray-800 cursor-pointer"
-            onClick={() => router.push(auth ? (currentTreeId ? `/tree/${currentTreeId}/schema` : "/trees") : "/")}
+            className="text-lg sm:text-xl font-bold text-gray-800 cursor-pointer shrink-0"
+            onClick={() => router.push("/")}
           >
             FamilyTree
           </h1>
 
-          {/* Выпадашка деревьев */}
           {auth && trees.length > 0 && (
-            <div ref={dropdownRef} className="relative">
+            <div ref={dropdownRef} className="relative min-w-0">
               <button
                 onClick={() => setShowTreeDropdown(!showTreeDropdown)}
-                className="flex items-center gap-2 text-sm bg-gray-50 text-gray-700 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm bg-gray-50 text-gray-700 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors min-h-[36px]"
               >
-                <FiGitBranch className="w-4 h-4 text-caramel" />
-                <span className="max-w-[150px] truncate">{currentTree?.name || "Выберите дерево"}</span>
-                <FiChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showTreeDropdown ? "rotate-180" : ""}`} />
+                <FiGitBranch className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-caramel shrink-0" />
+                <span className="max-w-[90px] sm:max-w-[150px] truncate">{currentTree?.name || "Выберите дерево"}</span>
+                <FiChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 transition-transform shrink-0 ${showTreeDropdown ? "rotate-180" : ""}`} />
               </button>
               {showTreeDropdown && (
-                <div className="absolute z-50 left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-50 left-0 mt-1 w-[calc(100vw-2rem)] sm:w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                   {trees.map(tree => (
                     <button
                       key={tree.id}
@@ -90,35 +89,38 @@ export default function Header() {
           )}
         </div>
 
-        <nav className="flex gap-4 items-center">
+        <nav className="flex gap-2 sm:gap-4 items-center">
+          <a href="/" className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 transition-colors">Главная</a>
+          <a href="/news" className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 transition-colors">Новости</a>
+          <a href="/onboarding" className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 transition-colors">Обучение</a>
           {auth ? (
             <>
               <button
                 onClick={() => router.push("/profile")}
-                className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-caramel hover:bg-gray-200 transition-colors"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-caramel hover:bg-gray-200 transition-colors"
                 title="Профиль"
               >
-                <FiUser className="w-5 h-5" />
+                <FiUser className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 text-sm bg-white text-gray-600 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm bg-white text-gray-600 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors min-h-[36px]"
               >
-                <FiLogOut className="w-4 h-4" />
-                Выйти
+                <FiLogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Выйти</span>
               </button>
             </>
           ) : (
             <>
               <button
                 onClick={() => router.push("/login")}
-                className="text-gray-600 hover:text-gray-800 transition-colors"
+                className="text-gray-600 hover:text-gray-800 transition-colors text-sm"
               >
                 Войти
               </button>
               <button
                 onClick={() => router.push("/register")}
-                className="text-sm bg-caramel text-white px-4 py-2 rounded-lg hover:bg-caramel/90 transition-colors"
+                className="text-xs sm:text-sm bg-caramel text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-caramel/90 transition-colors"
               >
                 Регистрация
               </button>

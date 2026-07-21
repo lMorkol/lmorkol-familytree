@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import api, { getApiBaseUrl } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
@@ -52,6 +52,17 @@ export default function TreeSchemaPage() {
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [myHumanId, setMyHumanId] = useState<number | null>(null);
+  const [showLegend, setShowLegend] = useState(false);
+  const [photoLightbox, setPhotoLightbox] = useState<string | null>(null);
+  const [layoutError, setLayoutError] = useState<string | null>(null);
+  const scaleRef = useRef(1);
+  const offsetRef = useRef({ x: 0, y: 0 });
+  const fitRef = useRef({ scale: 1, offset: { x: 0, y: 0 } });
+
+  useEffect(() => {
+    scaleRef.current = scale;
+    offsetRef.current = offset;
+  }, [scale, offset]);
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push("/login"); return; }
@@ -70,6 +81,7 @@ export default function TreeSchemaPage() {
     }).catch(() => router.push("/trees"));
   }, [treeId]);
 
+  // Wheel zoom
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -80,7 +92,77 @@ export default function TreeSchemaPage() {
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
-  }, []);
+  }, [loading]);
+
+  // Touch handlers via native listeners (passive: false for preventDefault)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let touchStart: { x: number; y: number } | null = null;
+    let pinchState: { dist: number; scale: number; midX: number; midY: number } | null = null;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        touchStart = { x: e.touches[0].clientX - offsetRef.current.x, y: e.touches[0].clientY - offsetRef.current.y };
+        pinchState = null;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchState = {
+          dist: Math.hypot(dx, dy),
+          scale: scaleRef.current,
+          midX: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          midY: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        };
+        touchStart = null;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 1 && touchStart) {
+        setOffset({
+          x: e.touches[0].clientX - touchStart.x,
+          y: e.touches[0].clientY - touchStart.y,
+        });
+      } else if (e.touches.length === 2 && pinchState) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        const newScale = Math.min(3, Math.max(0.2, pinchState.scale * (dist / pinchState.dist)));
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const scaleRatio = newScale / scaleRef.current;
+        setOffset({
+          x: midX - scaleRatio * (midX - offsetRef.current.x),
+          y: midY - scaleRatio * (midY - offsetRef.current.y),
+        });
+        setScale(newScale);
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) {
+        touchStart = null;
+        pinchState = null;
+      } else if (e.touches.length === 1) {
+        const t = e.touches[0];
+        touchStart = { x: t.clientX - offsetRef.current.x, y: t.clientY - offsetRef.current.y };
+        pinchState = null;
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [loading]);
 
   const buildLayout = useCallback(() => {
     if (humans.length === 0) return { nodes: [], lines: [] };
@@ -102,7 +184,7 @@ export default function TreeSchemaPage() {
 
     // Build siblings from explicit brother/sister relations
     relations.forEach(r => {
-      if (r.type === "brother" || r.type === "sister") {
+      if (r.type === "brother" || r.type === "sister" || r.type === "sibling") {
         if (!siblingsOf.has(r.from)) siblingsOf.set(r.from, []);
         if (!siblingsOf.get(r.from)!.includes(r.to)) siblingsOf.get(r.from)!.push(r.to);
         if (!siblingsOf.has(r.to)) siblingsOf.set(r.to, []);
@@ -185,7 +267,9 @@ export default function TreeSchemaPage() {
 
     // Rule 2: Children must always be below parents (iterate until stable)
     let changed = true;
-    while (changed) {
+    let iterCount = 0;
+    while (changed && iterCount < 50) {
+      iterCount++;
       changed = false;
       parentsOf.forEach((parents, childId) => {
         const childGen = generation.get(childId) || 0;
@@ -210,7 +294,9 @@ export default function TreeSchemaPage() {
 
     // Rule 3: Re-enforce siblings same generation after parent-child adjustments
     let sibChanged = true;
-    while (sibChanged) {
+    let sibIterCount = 0;
+    while (sibChanged && sibIterCount < 50) {
+      sibIterCount++;
       sibChanged = false;
       parentsOf.forEach((parents, childId) => {
         parents.forEach(parentId => {
@@ -467,26 +553,69 @@ export default function TreeSchemaPage() {
       }
     });
 
-    return { nodes, lines };
+    return { nodes, lines, error: null };
 
     } catch (e) {
       console.error("Schema layout error:", e);
-      return { nodes: [], lines: [] };
+      return { nodes: [], lines: [], error: "Ошибка построения схемы. Возможно, есть противоречивые связи (например, человек является одновременно родителем и братом другого человека). Проверьте связи и удалите ошибочные." };
     }
   }, [humans, relations, myHumanId]);
 
-  const { nodes, lines } = buildLayout();
+  const { nodes, lines, error: layoutBuildError } = useMemo(() => buildLayout(), [buildLayout]);
+
+  useEffect(() => {
+    setLayoutError(layoutBuildError);
+  }, [layoutBuildError]);
 
   // Compute bounding box
-  const bounds = nodes.length > 0 ? {
+  const bounds = useMemo(() => nodes.length > 0 ? {
     minX: Math.min(...nodes.map(n => n.x)) - 50,
     minY: Math.min(...nodes.map(n => n.y)) - 50,
     maxX: Math.max(...nodes.map(n => n.x + CARD_W)) + 50,
     maxY: Math.max(...nodes.map(n => n.y + CARD_H)) + 50,
-  } : { minX: 0, minY: 0, maxX: 800, maxY: 600 };
+  } : { minX: 0, minY: 0, maxX: 800, maxY: 600 }, [nodes]);
 
-  const svgW = bounds.maxX - bounds.minX;
-  const svgH = bounds.maxY - bounds.minY;
+  const svgW = useMemo(() => bounds.maxX - bounds.minX, [bounds]);
+  const svgH = useMemo(() => bounds.maxY - bounds.minY, [bounds]);
+
+  // Fit tree to screen on load
+  useEffect(() => {
+    if (loading || !containerRef.current || nodes.length === 0) return;
+    const container = containerRef.current;
+    const fitScale = Math.min(
+      container.clientWidth / svgW,
+      container.clientHeight / svgH,
+      1
+    );
+    fitRef.current = { scale: fitScale, offset: {
+      x: (container.clientWidth - svgW * fitScale) / 2,
+      y: (container.clientHeight - svgH * fitScale) / 2,
+    }};
+    setScale(fitRef.current.scale);
+    setOffset(fitRef.current.offset);
+  }, [loading, svgW, svgH, nodes.length]);
+
+  // Refit on resize / orientation change
+  useEffect(() => {
+    const onResize = () => {
+      if (!containerRef.current || nodes.length === 0) return;
+      const c = containerRef.current;
+      const fitScale = Math.min(c.clientWidth / svgW, c.clientHeight / svgH, 1);
+      fitRef.current = { scale: fitScale, offset: {
+        x: (c.clientWidth - svgW * fitScale) / 2,
+        y: (c.clientHeight - svgH * fitScale) / 2,
+      }};
+      setScale(fitRef.current.scale);
+      setOffset(fitRef.current.offset);
+    };
+    const onOrientation = () => setTimeout(onResize, 300);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onOrientation);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onOrientation);
+    };
+  }, [loading, svgW, svgH, nodes.length]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".node-card")) return;
@@ -503,22 +632,45 @@ export default function TreeSchemaPage() {
 
   if (loading) return <div className="py-10 text-center text-gray-500">Загрузка...</div>;
 
-  return (
-    <div className="h-screen flex flex-col">
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.push(`/tree/${treeId}`)} className="flex items-center gap-2 bg-gray-50 text-gray-700 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-sm font-medium">
+  if (layoutError) {
+    return (
+      <div className="h-[100dvh] flex flex-col">
+        <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-2 sm:py-3 flex items-center shrink-0">
+          <button onClick={() => router.push(`/tree/${treeId}`)} className="flex items-center gap-2 bg-gray-50 text-gray-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-xs sm:text-sm font-medium min-h-[44px]">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-            Список людей
+            <span className="hidden sm:inline">Список людей</span>
           </button>
-          <h2 className="font-bold text-gray-800">{treeName} — Семейное древо</h2>
+          <h2 className="font-bold text-gray-800 text-sm sm:text-base ml-4">{treeName} — Семейное древо</h2>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <button onClick={() => setScale(s => Math.min(3, s * 1.2))} className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">+</button>
-          <span>{Math.round(scale * 100)}%</span>
-          <button onClick={() => setScale(s => Math.max(0.2, s * 0.8))} className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">−</button>
-          <button onClick={() => { setScale(1); setOffset({ x: 0, y: 0 }); }} className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">Сброс</button>
-          <div className="flex items-center gap-3 ml-4 text-xs text-gray-500 border-l border-gray-200 pl-4">
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md text-center">
+            <p className="text-red-700 font-medium mb-2">Не удалось построить схему</p>
+            <p className="text-red-600 text-sm">{layoutError}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-[100dvh] flex flex-col">
+      <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between shrink-0 flex-wrap gap-2">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <button onClick={() => router.push(`/tree/${treeId}`)} className="flex items-center gap-2 bg-gray-50 text-gray-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-xs sm:text-sm font-medium min-h-[44px]">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            <span className="hidden sm:inline">Список людей</span>
+          </button>
+          <h2 className="font-bold text-gray-800 text-sm sm:text-base">{treeName} — Семейное древо</h2>
+        </div>
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-500">
+          <button onClick={() => setScale(s => Math.min(3, s * 1.2))} className="w-9 h-9 sm:w-auto sm:h-auto flex items-center justify-center bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">+</button>
+          <span className="w-12 text-center">{Math.round(scale * 100)}%</span>
+          <button onClick={() => setScale(s => Math.max(0.2, s * 0.8))} className="w-9 h-9 sm:w-auto sm:h-auto flex items-center justify-center bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">−</button>
+          <button onClick={() => { setScale(fitRef.current.scale); setOffset(fitRef.current.offset); }} className="px-2 sm:px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors min-h-[44px]">Сброс</button>
+          <button onClick={() => setShowLegend(l => !l)} className="sm:hidden px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors min-h-[44px]">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </button>
+          <div className={`${showLegend ? 'flex' : 'hidden'} sm:flex items-center gap-3 sm:ml-4 text-xs text-gray-500 border-l border-gray-200 sm:pl-4 ${showLegend ? 'fixed bottom-20 right-4 sm:relative sm:bottom-auto sm:right-auto bg-white border rounded-lg p-3 shadow-lg z-50 flex-col' : ''}`}>
             <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-caramel inline-block"></span> Супруги</span>
             <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-gray-700 inline-block"></span> Родитель-ребёнок</span>
             <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-gray-500 border-t border-dashed inline-block"></span> Братья/сёстры</span>
@@ -528,7 +680,7 @@ export default function TreeSchemaPage() {
 
       <div
         ref={containerRef}
-        className="flex-1 overflow-hidden cursor-grab active:cursor-grabbing"
+        className="flex-1 overflow-hidden cursor-grab active:cursor-grabbing touch-none"
         style={{ background: "linear-gradient(135deg, #fdf6ee 0%, #f0e6d6 50%, #e8ddd0 100%)" }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -542,8 +694,6 @@ export default function TreeSchemaPage() {
           style={{
             transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
             transformOrigin: "0 0",
-            minWidth: svgW,
-            minHeight: svgH,
           }}
         >
           <defs>
@@ -616,6 +766,8 @@ export default function TreeSchemaPage() {
                       width={32}
                       height={32}
                       clipPath={`url(#clip-${n.id})`}
+                      style={{ cursor: "pointer" }}
+                      onClick={(e) => { e.stopPropagation(); setPhotoLightbox(`${getApiBaseUrl()}/uploads/${n.photo}`); }}
                     />
                     <circle cx={n.x + 22} cy={n.y + CARD_H / 2} r={16} fill="none" stroke={n.isCurrentUser ? "#4A3F33" : n.gender === "male" ? "#5C4E3D" : "#8E7A68"} strokeWidth={1} />
                   </>
@@ -643,6 +795,25 @@ export default function TreeSchemaPage() {
           </g>
         </svg>
       </div>
+
+      {photoLightbox && (
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setPhotoLightbox(null)}
+        >
+          <img
+            src={photoLightbox}
+            alt=""
+            className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain"
+          />
+          <button
+            onClick={() => setPhotoLightbox(null)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

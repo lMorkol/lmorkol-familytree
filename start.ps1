@@ -1,5 +1,9 @@
 Write-Host "Stopping existing containers..." -ForegroundColor Yellow
-docker compose -f docker/docker-compose.yml down 2>$null
+docker compose -f docker/docker-compose.yml down --remove-orphans
+docker rm -f docker-frontend-1 docker-backend-1 docker-postgres-1 2>$null
+
+Write-Host "Building frontend image..." -ForegroundColor Yellow
+docker build -t docker-frontend:latest ./frontend
 
 Write-Host "Starting Docker services..." -ForegroundColor Green
 docker compose -f docker/docker-compose.yml up -d

@@ -24,6 +24,40 @@ class RelationService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Human not found")
         require_tree_access(human.tree_id, user, self.db, min_role="editor")
 
+        # Validate: cannot add spouse if one already exists
+        if relation_type == "spouse":
+            from app.models.relation import HumanRelationship as HR, RelationshipType as RT
+            spouse_type = self.db.query(RT).filter(RT.name == "spouse").first()
+            if spouse_type:
+                existing = (
+                    self.db.query(HR)
+                    .filter(
+                        HR.relation_id == spouse_type.relation_id,
+                        ((HR.from_human_id == human_id) | (HR.to_human_id == human_id)),
+                    )
+                    .first()
+                )
+                if existing:
+                    from fastapi import HTTPException, status
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="У этого человека уже есть супруг. Сначала сделайте текущего супруга бывшим.",
+                    )
+                existing_relative = (
+                    self.db.query(HR)
+                    .filter(
+                        HR.relation_id == spouse_type.relation_id,
+                        ((HR.from_human_id == relative_id) | (HR.to_human_id == relative_id)),
+                    )
+                    .first()
+                )
+                if existing_relative:
+                    from fastapi import HTTPException, status
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="У выбранного человека уже есть супруг. Сначала сделайте текущего супруга бывшим.",
+                    )
+
         rel_type = self.relation_repo.get_type_by_name(relation_type)
         if rel_type is None:
             from app.models.relation import RelationshipType
@@ -36,7 +70,7 @@ class RelationService:
             "parent": "child", "child": "parent",
             "spouse": "spouse", "ex_spouse": "ex_spouse",
             "adopted": "adopted",
-            "brother": "brother", "sister": "sister",
+            "brother": "brother", "sister": "sister", "sibling": "sibling",
             "grandmother": "grandchild", "grandfather": "grandchild",
             "grandchild": "grandparent",
             "stepbrother": "stepbrother", "stepsister": "stepsister",
@@ -75,7 +109,7 @@ class RelationService:
             "endDate": str(rel.end_date) if rel.end_date else None,
         }
 
-    def update_relation(self, relation_id: int, user: User,
+    def update_relation(self, relation_id: int, user: User, relation_type: str | None = None,
                         start_date: str | None = None, end_date: str | None = None) -> dict:
         rel = self.relation_repo.get_by_id(relation_id)
         if rel is None:
@@ -91,37 +125,52 @@ class RelationService:
         if end_date is not None:
             kwargs["end_date"] = date.fromisoformat(end_date) if end_date else None
 
+        # Update relation type if changed
+        new_type_name = None
+        if relation_type:
+            new_type = self.relation_repo.get_type_by_name(relation_type)
+            if new_type and new_type.relation_id != rel.relation_id:
+                new_type_name = relation_type
+                self.relation_repo.update(rel, relation_id=new_type.relation_id)
+
         if kwargs:
             self.relation_repo.update(rel, **kwargs)
 
-            # Also update the inverse relation
-            from app.models.relation import HumanRelationship, RelationshipType
-            rt = self.db.query(RelationshipType).filter(RelationshipType.relation_id == rel.relation_id).first()
-            INVERSE = {
-                "parent": "child", "child": "parent",
-                "spouse": "spouse", "ex_spouse": "ex_spouse",
-                "adopted": "adopted",
-                "brother": "brother", "sister": "sister",
-                "grandmother": "grandchild", "grandfather": "grandchild",
-                "grandchild": "grandparent",
-                "stepbrother": "stepbrother", "stepsister": "stepsister",
-            }
-            inverse_name = INVERSE.get(rt.name) if rt else None
-            if inverse_name:
-                inverse_type = self.db.query(RelationshipType).filter(RelationshipType.name == inverse_name).first()
-                if inverse_type:
-                    inverse_rel = (
-                        self.db.query(HumanRelationship)
-                        .filter(
-                            HumanRelationship.from_human_id == rel.to_human_id,
-                            HumanRelationship.to_human_id == rel.from_human_id,
-                            HumanRelationship.relation_id == inverse_type.relation_id,
-                        )
-                        .first()
-                    )
-                    if inverse_rel:
-                        self.relation_repo.update(inverse_rel, **kwargs)
+        # Also update the inverse relation
+        from app.models.relation import HumanRelationship, RelationshipType
 
+        INVERSE = {
+            "parent": "child", "child": "parent",
+            "spouse": "spouse", "ex_spouse": "ex_spouse",
+            "adopted": "adopted",
+            "brother": "brother", "sister": "sister", "sibling": "sibling",
+            "grandmother": "grandchild", "grandfather": "grandchild",
+            "grandchild": "grandparent",
+            "stepbrother": "stepbrother", "stepsister": "stepsister",
+        }
+
+        # Determine inverse type name
+        current_type = self.db.query(RelationshipType).filter(RelationshipType.relation_id == rel.relation_id).first()
+        inverse_name = INVERSE.get(new_type_name or (current_type.name if current_type else ""))
+
+        if inverse_name:
+            inverse_type = self.db.query(RelationshipType).filter(RelationshipType.name == inverse_name).first()
+            if inverse_type:
+                inverse_rel = (
+                    self.db.query(HumanRelationship)
+                    .filter(
+                        HumanRelationship.from_human_id == rel.to_human_id,
+                        HumanRelationship.to_human_id == rel.from_human_id,
+                    )
+                    .first()
+                )
+                if inverse_rel:
+                    inv_kwargs = dict(kwargs)
+                    if new_type_name:
+                        inv_kwargs["relation_id"] = inverse_type.relation_id
+                    self.relation_repo.update(inverse_rel, **inv_kwargs)
+
+        rt = self.db.query(RelationshipType).filter(RelationshipType.relation_id == rel.relation_id).first()
         return {
             "id": rel.id,
             "fromHumanId": rel.from_human_id,
@@ -145,7 +194,7 @@ class RelationService:
             "parent": "child", "child": "parent",
             "spouse": "spouse", "ex_spouse": "ex_spouse",
             "adopted": "adopted",
-            "brother": "brother", "sister": "sister",
+            "brother": "brother", "sister": "sister", "sibling": "sibling",
             "grandmother": "grandchild", "grandfather": "grandchild",
             "grandchild": "grandparent",
             "stepbrother": "stepbrother", "stepsister": "stepsister",

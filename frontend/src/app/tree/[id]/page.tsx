@@ -18,6 +18,7 @@ export default function TreePage() {
   const [humans, setHumans] = useState<HumanBrief[]>([]);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [selectedHuman, setSelectedHuman] = useState<number | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingTree, setEditingTree] = useState(false);
   const [treeName, setTreeName] = useState("");
@@ -241,18 +242,18 @@ export default function TreePage() {
             <span className="text-sm text-gray-500 font-normal ml-2">(нажмите для редактирования)</span>
           </h2>
         )}
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => router.push(`/tree/${treeId}/schema`)}
-            className="bg-caramel text-white px-6 py-3 rounded-lg hover:bg-caramel/90 transition-colors font-medium"
+            className="bg-caramel text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-caramel/90 transition-colors font-medium w-full sm:w-auto text-sm sm:text-base"
           >
             Семейное древо
           </button>
           <button
             onClick={() => setShowGenderModal(true)}
-            className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors font-medium"
+            className="flex items-center justify-center gap-2 bg-white text-gray-700 px-4 sm:px-6 py-2 sm:py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors font-medium w-full sm:w-auto text-sm sm:text-base"
           >
-            <FiPlus className="w-5 h-5" />
+            <FiPlus className="w-4 h-4 sm:w-5 sm:h-5" />
             Добавить человека
           </button>
         </div>
@@ -328,7 +329,8 @@ export default function TreePage() {
                       <img
                         src={`${getApiBaseUrl()}/uploads/${myHuman.photo}`}
                         alt=""
-                        className="w-14 h-14 rounded-full object-cover"
+                        className="w-14 h-14 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={(e) => { e.stopPropagation(); setPhotoUrl(`${getApiBaseUrl()}/uploads/${myHuman.photo}`); }}
                       />
                     ) : (
                       <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-caramel text-lg font-semibold">
@@ -385,7 +387,8 @@ export default function TreePage() {
                           <img
                             src={`${getApiBaseUrl()}/uploads/${h.photo}`}
                             alt=""
-                            className="w-14 h-14 rounded-full object-cover"
+                            className="w-14 h-14 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={(e) => { e.stopPropagation(); setPhotoUrl(`${getApiBaseUrl()}/uploads/${h.photo}`); }}
                           />
                         ) : (
                           <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-lg font-semibold">
@@ -484,6 +487,25 @@ export default function TreePage() {
           )}
         </main>
       </div>
+
+      {photoUrl && (
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setPhotoUrl(null)}
+        >
+          <img
+            src={photoUrl}
+            alt=""
+            className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain"
+          />
+          <button
+            onClick={() => setPhotoUrl(null)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+          >
+            <FiX className="w-8 h-8" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

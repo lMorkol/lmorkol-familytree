@@ -66,7 +66,7 @@ export default function HumanPreview({ humanId, treeId, onClose }: Props) {
 
       {showRelationForm && (
         <div className="mb-4">
-          <RelationForm onSubmit={handleAddRelation} onCancel={() => setShowRelationForm(false)} />
+          <RelationForm treeId={treeId} onSubmit={handleAddRelation} onCancel={() => setShowRelationForm(false)} />
         </div>
       )}
 

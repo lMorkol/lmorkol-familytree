@@ -1,9 +1,9 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-familytree}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-familytree}
@@ -42,16 +42,16 @@ services:
       start_period: 10s
 
   frontend:
-    image: docker-frontend:latest
-    command: node server.js
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.familytreebp.ru}
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', r => process.exit(r.statusCode===200?0:1)).on('error', ()=>process.exit(1))\""]
       interval: 30s

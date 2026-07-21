@@ -16,7 +16,6 @@ WORKDIR /app
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
 
 RUN mkdir -p /app/uploads && chown -R appuser:appuser /app
 

@@ -209,7 +209,7 @@ def seed_defaults():
         except Exception:
             db.rollback()
 
-        for name in ["parent", "child", "spouse", "ex_spouse", "adopted", "brother", "sister",
+        for name in ["parent", "child", "spouse", "ex_spouse", "adopted", "brother", "sister", "sibling",
                       "grandmother", "grandfather", "grandchild", "stepbrother", "stepsister"]:
             if not db.query(RelationshipType).filter(RelationshipType.name == name).first():
                 db.add(RelationshipType(name=name))
