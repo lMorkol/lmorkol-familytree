@@ -10,8 +10,6 @@ RUN npm run build
 
 FROM node:20-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
-
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
