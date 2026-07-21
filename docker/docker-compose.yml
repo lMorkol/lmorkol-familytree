@@ -31,6 +31,8 @@ services:
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRATION_HOURS: ${JWT_EXPIRATION_HOURS:-24}
       CORS_ORIGINS: ${CORS_ORIGINS}
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,3 +63,4 @@ services:
 
 volumes:
   pgdata:
+  uploads_data:
