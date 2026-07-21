@@ -564,7 +564,7 @@ export default function TreeSchemaPage() {
   const { nodes, lines, error: layoutBuildError } = useMemo(() => buildLayout(), [buildLayout]);
 
   useEffect(() => {
-    setLayoutError(layoutBuildError);
+    setLayoutError(layoutBuildError ?? null);
   }, [layoutBuildError]);
 
   // Compute bounding box

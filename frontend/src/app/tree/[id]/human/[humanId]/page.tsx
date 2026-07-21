@@ -362,7 +362,7 @@ export default function HumanPage() {
                 src={`${API_URL}/uploads/${human.photo}`}
                 alt={[human.secondName, human.firstName].filter(Boolean).join(" ")}
                 className="w-36 h-36 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => setLightboxPhoto(human.photo)}
+                onClick={() => setLightboxPhoto(human.photo ?? null)}
               />
             ) : (
               <div className="w-36 h-36 rounded-lg bg-gray-100 flex items-center justify-center text-4xl text-gray-500">
