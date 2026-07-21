@@ -43,6 +43,7 @@ services:
 
   frontend:
     image: docker-frontend:latest
+    command: node server.js
     restart: unless-stopped
     ports:
       - "3000:3000"

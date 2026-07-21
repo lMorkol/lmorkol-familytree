@@ -1,3 +1,6 @@
+Write-Host "Stopping existing containers..." -ForegroundColor Yellow
+docker compose -f docker/docker-compose.yml down 2>$null
+
 Write-Host "Starting Docker services..." -ForegroundColor Green
 docker compose -f docker/docker-compose.yml up -d
 
