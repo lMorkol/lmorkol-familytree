@@ -17,7 +17,7 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin/uvicorn /usr/local/bin/uvicorn
 COPY --from=builder /app /app
 
-RUN mkdir -p /app/uploads && chown -R appuser:appuser /app
+RUN mkdir -p /app/app/uploads && chown -R appuser:appuser /app
 
 USER appuser
 
